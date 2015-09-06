@@ -2,6 +2,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+
+typedef struct cgsize {
+	GLint x;
+	GLint y;
+} cgsize;
+
 static void error_callback(int error, const char* description)
 {
 	fputs(description, stderr);
@@ -17,6 +23,91 @@ void draw_point(int x, int y)
 	glBegin(GL_POINTS);
 	glVertex2i(x, y);
 	glEnd();
+}
+
+
+void circle_plot_points(GLint xc, GLint yc, cgsize cz)
+{
+	draw_point(xc+cz.x, yc+cz.y);
+	draw_point(xc-cz.x, yc+cz.y);
+	draw_point(xc+cz.x, yc-cz.y);
+	draw_point(xc-cz.x, yc-cz.y);
+	draw_point(xc+cz.y, yc+cz.x);
+	draw_point(xc-cz.y, yc+cz.x);
+	draw_point(xc+cz.y, yc-cz.x);
+	draw_point(xc-cz.y, yc-cz.x);
+}
+
+void circle_mid_point(GLint xc, GLint yc, GLint radius)
+{
+	cgsize circsz;
+	GLint p = 1 - radius;
+	circsz.x = 0;
+	circsz.y = radius;
+
+	circle_plot_points(xc, yc, circsz);
+
+	while (circsz.x < circsz.y) {
+		circsz.x += 1;
+		if (p < 0) {
+			p += 2*circsz.x+1;
+		} else {
+			circsz.y -= 1;
+			p += 2*(circsz.x-circsz.y)+1;
+		}
+		circle_plot_points(xc, yc, circsz);
+	}
+}
+
+void ellipse_plot_points(int xcenter, int ycenter, int x, int y)
+{
+	draw_point(xcenter+x, ycenter+y);
+	draw_point(xcenter-x, ycenter+y);
+	draw_point(xcenter+x, ycenter-y);
+	draw_point(xcenter-x, ycenter-y);
+}
+
+void ellipse_mid_point(int xcenter, int ycenter, int rx, int ry)
+{
+	int rx2 = rx*rx;
+	int ry2 = ry*ry;
+	int tworx2 = 2*rx2;
+	int twory2 = 2*ry2;
+	int p;
+	int x = 0;
+	int y = ry;
+	int px = 0;
+	int py = tworx2 * y;
+
+	ellipse_plot_points(xcenter, ycenter, x, y);
+
+	p = round(ry2 - (rx2 * ry) + (0.25 * rx2));
+	while(px < py) {
+		x++;
+		px += twory2;
+		if (p < 0) {
+			p += ry2 + px;
+		} else {
+			y--;
+			py -= tworx2;
+			p += ry2 + px - py;
+		}
+		ellipse_plot_points(xcenter, ycenter, x, y);
+	}
+
+	p = round(ry2 * (x + 0.5) * (x + 0.5) + rx2 * (y - 1) * (y - 1) - rx2 * ry2);
+	while (y > 0) {
+		y--;
+		py -= tworx2;
+		if (p > 0) {
+			p += rx2 - py;
+		} else {
+			x++;
+			px += twory2;
+			p += rx2 - py + px;
+		}
+		ellipse_plot_points(xcenter, ycenter, x, y);
+	}
 }
 
 //inline int round(const float a) { return int (a + 0.5); }
@@ -120,7 +211,13 @@ int main(void)
 		glEnd();
 		glColor3f(1.f, 0.f, 0.f);
 		line_dda(0, 0, width, height);
+		glColor3f(0.f, 1.f, 0.f);
 		line_bres(0, 50, width-50, height);
+		glColor3f(0.f, 0.f, 1.f);
+		circle_mid_point(320, 240, 50);
+		glColor3f(1.f, 0.f, 1.f);
+		ellipse_mid_point(320, 240, 80, 40);
+
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
